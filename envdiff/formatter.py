@@ -1,60 +1,81 @@
-"""Output formatters for DiffResult."""
+"""Text and summary formatters for DiffResult."""
 
-from typing import List
+from __future__ import annotations
 
-from envdiff.differ import DiffEntry, DiffResult, DiffStatus
+from typing import TYPE_CHECKING
 
-_STATUS_SYMBOL = {
-    DiffStatus.ADDED: "+",
-    DiffStatus.REMOVED: "-",
-    DiffStatus.CHANGED: "~",
-    DiffStatus.UNCHANGED: " ",
-}
+if TYPE_CHECKING:
+    from .differ import DiffEntry, DiffResult
 
-_STATUS_COLOR = {
-    DiffStatus.ADDED: "\033[32m",   # green
-    DiffStatus.REMOVED: "\033[31m",  # red
-    DiffStatus.CHANGED: "\033[33m",  # yellow
-    DiffStatus.UNCHANGED: "",
-}
+from .differ import DiffStatus
+
+# ANSI colour codes
+_GREEN = "\033[32m"
+_RED = "\033[31m"
+_YELLOW = "\033[33m"
 _RESET = "\033[0m"
 
 
-def _format_entry_plain(entry: DiffEntry) -> str:
-    sym = _STATUS_SYMBOL[entry.status]
+def _format_entry_plain(entry: "DiffEntry") -> str:
+    if entry.status == DiffStatus.ADDED:
+        return f"+ {entry.key}={entry.value_b}"
+    if entry.status == DiffStatus.REMOVED:
+        return f"- {entry.key}={entry.value_a}"
     if entry.status == DiffStatus.CHANGED:
-        return f"{sym} {entry.key}: {entry.left_value!r} -> {entry.right_value!r}"
-    value = entry.right_value if entry.status == DiffStatus.ADDED else entry.left_value
-    return f"{sym} {entry.key}={value}"
+        return f"~ {entry.key}: {entry.value_a!r} -> {entry.value_b!r}"
+    return f"  {entry.key}={entry.value_a}"
 
 
-def _format_entry_color(entry: DiffEntry) -> str:
-    color = _STATUS_COLOR[entry.status]
-    line = _format_entry_plain(entry)
-    return f"{color}{line}{_RESET}" if color else line
+def _format_entry_color(entry: "DiffEntry") -> str:
+    plain = _format_entry_plain(entry)
+    if entry.status == DiffStatus.ADDED:
+        return f"{_GREEN}{plain}{_RESET}"
+    if entry.status == DiffStatus.REMOVED:
+        return f"{_RED}{plain}{_RESET}"
+    if entry.status == DiffStatus.CHANGED:
+        return f"{_YELLOW}{plain}{_RESET}"
+    return plain
 
 
-def format_text(result: DiffResult, color: bool = False) -> str:
-    """Render a DiffResult as a human-readable text block."""
-    if not result.entries:
-        return "No differences found."
+def format_text(
+    result: "DiffResult",
+    *,
+    color: bool = True,
+    show_unchanged: bool = False,
+    label_a: str = "a",
+    label_b: str = "b",
+) -> str:
+    """Return a multi-line diff string for *result*."""
+    lines: list[str] = []
+    if label_a or label_b:
+        lines.append(f"--- {label_a}")
+        lines.append(f"+++ {label_b}")
 
-    lines: List[str] = []
     fmt = _format_entry_color if color else _format_entry_plain
+
     for entry in result.entries:
+        if entry.status == DiffStatus.UNCHANGED and not show_unchanged:
+            continue
         lines.append(fmt(entry))
+
     return "\n".join(lines)
 
 
-def format_summary(result: DiffResult) -> str:
+def format_summary(
+    result: "DiffResult",
+    *,
+    label_a: str = "a",
+    label_b: str = "b",
+) -> str:
     """Return a one-line summary of the diff."""
+    if result.is_identical():
+        return f"{label_a} and {label_b} are identical."
     parts = []
-    if result.added:
-        parts.append(f"{len(result.added)} added")
-    if result.removed:
-        parts.append(f"{len(result.removed)} removed")
-    if result.changed:
-        parts.append(f"{len(result.changed)} changed")
-    if not parts:
-        return "Environments are identical."
-    return "Diff: " + ", ".join(parts) + "."
+    if result.n_added:
+        parts.append(f"{result.n_added} added")
+    if result.n_removed:
+        parts.append(f"{result.n_removed} removed")
+    if result.n_changed:
+        parts.append(f"{result.n_changed} changed")
+    summary = ", ".join(parts)
+    return f"{label_a} vs {label_b}: {summary}."
