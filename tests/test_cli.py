@@ -38,6 +38,13 @@ def test_different_files_exit_one_with_flag(tmp_env):
     assert main([str(a), str(b), "--exit-code"]) == 1
 
 
+def test_identical_files_exit_zero_with_flag(tmp_env):
+    """--exit-code should still return 0 when files are identical."""
+    a = tmp_env("a.env", "KEY=value\n")
+    b = tmp_env("b.env", "KEY=value\n")
+    assert main([str(a), str(b), "--exit-code"]) == 0
+
+
 def test_missing_file_returns_2(tmp_env, capsys):
     a = tmp_env("a.env", "KEY=value\n")
     rc = main([str(a), "/nonexistent/path.env"])
