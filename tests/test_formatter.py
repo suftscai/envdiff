@@ -5,6 +5,7 @@ from envdiff.formatter import format_summary, format_text
 
 
 def _make_result():
+    """Return a diff result with added, removed, and changed keys."""
     left = {"HOST": "staging", "DEBUG": "true", "OLD_KEY": "gone"}
     right = {"HOST": "prod", "DEBUG": "true", "NEW_KEY": "here"}
     return diff_envs(left, right)
@@ -65,3 +66,12 @@ def test_format_summary_only_added():
     summary = format_summary(result)
     assert "1 added" in summary
     assert "removed" not in summary
+
+
+def test_format_summary_only_removed():
+    """Verify summary correctly reports only removed keys with no added/changed."""
+    result = diff_envs({"OLD": "val"}, {})
+    summary = format_summary(result)
+    assert "1 removed" in summary
+    assert "added" not in summary
+    assert "changed" not in summary
