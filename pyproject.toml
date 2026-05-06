@@ -27,6 +27,7 @@ envdiff = "envdiff.cli:main"
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "ruff>=0.4",
 ]
 
 [tool.pytest.ini_options]
@@ -39,6 +40,14 @@ omit = ["tests/*"]
 
 [tool.coverage.report]
 show_missing = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = []
 
 [tool.setuptools.packages.find]
 where = ["."]
