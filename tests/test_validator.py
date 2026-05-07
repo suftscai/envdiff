@@ -97,3 +97,12 @@ def test_clean_diff_has_no_issues():
     report = validate_diff(result)
     assert report.ok
     assert report.issues == []
+
+
+def test_validate_diff_errors_and_warnings_are_subsets_of_issues(staging, production):
+    """report.errors and report.warnings must be consistent subsets of report.issues."""
+    result = diff(staging, production)
+    report = validate_diff(result)
+    assert all(i.severity == "error" for i in report.errors)
+    assert all(i.severity == "warning" for i in report.warnings)
+    assert set(report.errors) | set(report.warnings) <= set(report.issues)
