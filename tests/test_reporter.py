@@ -96,3 +96,12 @@ def test_identical_envs_produce_empty_differences():
     assert report["summary"]["added"] == 0
     assert report["summary"]["removed"] == 0
     assert report["summary"]["changed"] == 0
+
+
+def test_summary_counts_sum_to_total_keys(staging, production):
+    """Verify that all summary counts add up to the total number of unique keys."""
+    result = diff(staging, production)
+    report = build_report(result)
+    summary = report["summary"]
+    total_unique_keys = len(set(staging) | set(production))
+    assert summary["added"] + summary["removed"] + summary["changed"] + summary["unchanged"] == total_unique_keys
