@@ -21,19 +21,23 @@ def result(staging, production) -> DiffResult:
     return diff(staging, production)
 
 
+@pytest.fixture()
+def report(result) -> AuditReport:
+    """Pre-built audit report used by multiple tests."""
+    return build_audit(result)
+
+
 def test_build_audit_returns_audit_report(result):
     report = build_audit(result)
     assert isinstance(report, AuditReport)
 
 
-def test_build_audit_excludes_unchanged(result):
-    report = build_audit(result)
+def test_build_audit_excludes_unchanged(report):
     statuses = [e.status for e in report.events]
     assert DiffStatus.UNCHANGED not in statuses
 
 
-def test_build_audit_total_count(result):
-    report = build_audit(result)
+def test_build_audit_total_count(report):
     # DB_HOST changed, PORT removed, NEW_KEY added = 3 events
     assert report.total == 3
 
@@ -45,31 +49,26 @@ def test_build_audit_label_stored(result):
         assert event.label == "sprint-42"
 
 
-def test_keys_added(result):
-    report = build_audit(result)
+def test_keys_added(report):
     assert "NEW_KEY" in report.keys_added()
 
 
-def test_keys_removed(result):
-    report = build_audit(result)
+def test_keys_removed(report):
     assert "PORT" in report.keys_removed()
 
 
-def test_keys_changed(result):
-    report = build_audit(result)
+def test_keys_changed(report):
     assert "DB_HOST" in report.keys_changed()
 
 
-def test_by_status_grouping(result):
-    report = build_audit(result)
+def test_by_status_grouping(report):
     grouped = report.by_status
     assert DiffStatus.ADDED in grouped
     assert DiffStatus.REMOVED in grouped
     assert DiffStatus.CHANGED in grouped
 
 
-def test_format_audit_text_contains_key(result):
-    report = build_audit(result)
+def test_format_audit_text_contains_key(report):
     text = format_audit_text(report)
     assert "DB_HOST" in text
     assert "NEW_KEY" in text
@@ -94,3 +93,11 @@ def test_event_has_timestamp():
     )
     assert event.timestamp  # non-empty ISO string
     assert "T" in event.timestamp  # rough ISO format check
+
+
+def test_build_audit_default_label_is_none(result):
+    """Verify that label defaults to None when not provided."""
+    report = build_audit(result)
+    assert report.label is None
+    for event in report.events:
+        assert event.label is None
